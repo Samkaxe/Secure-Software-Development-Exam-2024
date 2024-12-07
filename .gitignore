@@ -1,0 +1,13 @@
+﻿# Exclude appsettings files
+appsettings.json
+appsettings.Development.json
+
+# Standard .NET exclusions
+bin/
+obj/
+*.user
+*.suo
+*.swp
+*.log
+*.vs/
+*.vscode/
