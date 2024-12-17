@@ -1,10 +1,11 @@
 ﻿using Application.DTOs;
+using Core.Entites;
 
 namespace Application.Interfaces;
 
 public interface IUserService
 {
-    Task<bool> LoginAsync(string email, string password);
+    Task<TokenDTO> LoginAsync(string email, string password);
     Task LogoutAsync(Guid userId);
     
     // CRUD Operations

@@ -45,7 +45,7 @@ public class MedicalRecordService : IMedicalRecordService
         });
     }
 
-    public async Task AddAsync(CreateMedicalRecordDTO medicalRecordDto)
+    public async Task<MedicalRecordDTO> AddAsync(CreateMedicalRecordDTO medicalRecordDto)
     {
         var encryptedData = _encryptionHelper.Encrypt(medicalRecordDto.RecordData);
 
@@ -57,11 +57,20 @@ public class MedicalRecordService : IMedicalRecordService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _medicalRecordRepository.AddAsync(newRecord);
+        var savedRecord = await _medicalRecordRepository.AddAsync(newRecord);
         await _medicalRecordRepository.SaveChangesAsync();
+        
+        return new MedicalRecordDTO
+        {
+            Id = savedRecord.Id,
+            UserId = savedRecord.UserId,
+            RecordData = _encryptionHelper.Decrypt(savedRecord.RecordData), // Decrypt for return
+            CreatedAt = savedRecord.CreatedAt,
+            UpdatedAt = savedRecord.UpdatedAt
+        };
     }
 
-    public async Task UpdateAsync(Guid id, UpdateMedicalRecordDTO medicalRecordDto)
+    public async Task<MedicalRecordDTO> UpdateAsync(Guid id, UpdateMedicalRecordDTO medicalRecordDto)
     {
         var record = await _medicalRecordRepository.GetByIdAsync(id);
         if (record == null) throw new KeyNotFoundException("Medical record not found.");
@@ -70,8 +79,17 @@ public class MedicalRecordService : IMedicalRecordService
         record.EncryptionKey = medicalRecordDto.EncryptionKey;
         record.UpdatedAt = DateTime.UtcNow;
 
-        await _medicalRecordRepository.UpdateAsync(record);
+        var savedRecord = await _medicalRecordRepository.UpdateAsync(record);
         await _medicalRecordRepository.SaveChangesAsync();
+        
+        return new MedicalRecordDTO
+        {
+            Id = savedRecord.Id,
+            UserId = savedRecord.UserId,
+            RecordData = _encryptionHelper.Decrypt(savedRecord.RecordData), // Decrypt for return
+            CreatedAt = savedRecord.CreatedAt,
+            UpdatedAt = savedRecord.UpdatedAt
+        };
     }
 
     public async Task DeleteAsync(Guid id)
