@@ -28,16 +28,18 @@ public class MedicalRecordRepository : IMedicalRecordRepository
             .ToListAsync();
     }
 
-    public async Task AddAsync(MedicalRecord medicalRecord)
+    public async Task<MedicalRecord> AddAsync(MedicalRecord medicalRecord)
     {
         ValidateMedicalRecord(medicalRecord);
         await _context.MedicalRecords.AddAsync(medicalRecord);
+        return medicalRecord;
     }
 
-    public async Task UpdateAsync(MedicalRecord medicalRecord)
+    public async Task<MedicalRecord> UpdateAsync(MedicalRecord medicalRecord)
     {
         ValidateMedicalRecord(medicalRecord);
         _context.MedicalRecords.Update(medicalRecord);
+        return medicalRecord;
     }
 
     public async Task DeleteAsync(MedicalRecord medicalRecord)

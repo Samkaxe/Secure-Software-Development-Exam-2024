@@ -16,28 +16,38 @@ public class UserService : IUserService
         _tokenService = tokenService;
     }
 
-    public async Task<bool> LoginAsync(string email, string password)
+    public async Task<TokenDTO> LoginAsync(string email, string password)
     {
         var user = await _userRepository.GetByEmailAsync(email);
-        if (user == null) return false;
+        if (user == null)
+            throw new UnauthorizedAccessException("Invalid email or password.");
 
         var isPasswordValid = PasswordHelper.VerifyPassword(password, user.PasswordHash, user.PasswordSalt);
-        if (!isPasswordValid) return false;
-
+        if (!isPasswordValid)
+            throw new UnauthorizedAccessException("Invalid email or password.");
+        
         var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Role.ToString());
         var refreshToken = _tokenService.GenerateRefreshToken();
-
-        user.Token = new Token
+        
+        var token = new Token
         {
             AccessToken = accessToken,
             RefreshToken = refreshToken,
-            TokenExpiration = DateTime.UtcNow.AddHours(1),
-            CreatedAt = DateTime.UtcNow
+            TokenExpiration = DateTime.UtcNow.AddHours(1), // Move this value to configuration
+            CreatedAt = DateTime.UtcNow,
+            DeviceInfo = "Unknown Device" // Use input parameter instead of hardcoding
         };
+
+        user.Token = token;
         await _userRepository.UpdateAsync(user);
         await _userRepository.SaveChangesAsync();
 
-        return true;
+        return new TokenDTO
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            TokenExpiration = DateTime.UtcNow.AddHours(1) // Move this to configuration if necessary
+        };
     }
 
     public async Task LogoutAsync(Guid userId)
