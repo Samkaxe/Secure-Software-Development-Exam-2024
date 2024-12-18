@@ -1,6 +1,7 @@
 using System.Text;
 using Application.Interfaces;
 using Application.Services;
+using Azure.Identity;
 using Infrastructure;
 using Infrastructure.DataAccessInterfaces;
 using Infrastructure.DataAccessServices;
@@ -9,6 +10,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Access Azure key vault
+var keyVaultUri = new Uri(builder.Configuration["SecretsVault:Url"]!);
+
+var azureCredentials = new ClientSecretCredential(
+    builder.Configuration["SecretsVault:AzureClientTenantId"],
+    builder.Configuration["SecretsVault:AzureClientId"],
+    builder.Configuration["SecretsVault:AzureClientSecret"]);
+builder.Configuration.AddAzureKeyVault(keyVaultUri, azureCredentials);
+
+
 
 // Register repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
