@@ -32,8 +32,8 @@ builder.Services.AddScoped<IMedicalRecordService, MedicalRecordService>();
 builder.Services.AddScoped<IUserService, UserService>(); 
 builder.Services.AddScoped<ITokenService>(provider =>
     new TokenService(
-        jwtSecret: builder.Configuration["JwtSettings:Secret"], 
-        jwtExpirationMinutes: int.Parse(builder.Configuration["JwtSettings:ExpirationMinutes"]) // Get expiration time
+        jwtSecret: builder.Configuration.GetSection("JwtSecret").Value!, 
+        jwtExpirationMinutes: int.Parse(builder.Configuration["JwtSettings:ExpirationMinutes"]!) // Get expiration time
     ));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -48,7 +48,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
             ValidAudience = builder.Configuration["JwtSettings:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]))
+                Encoding.UTF8.GetBytes(builder.Configuration.GetSection("JwtSecret").Value!))
         };
     });
 
@@ -62,7 +62,7 @@ builder.Services.AddAuthorization(options =>
 
 // Register EncryptionHelper with a key from configuration
 builder.Services.AddSingleton(provider => 
-    new EncryptionHelper(builder.Configuration["EncryptionKey"]));
+    new EncryptionHelper(builder.Configuration.GetSection("MasterEncryptionKey").Value!));
 // Configure database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
