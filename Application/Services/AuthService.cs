@@ -1,7 +1,9 @@
-﻿using Application.DTOs;
+﻿using System.Text;
+using Application.DTOs;
 using Application.Interfaces;
 using Core.Entites;
 using Infrastructure.DataAccessInterfaces;
+using Microsoft.AspNetCore.Http;
 
 namespace Application.Services;
 
@@ -9,11 +11,13 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly ITokenService _tokenService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public AuthService(IUserRepository userRepository, ITokenService tokenService)
+    public AuthService(IUserRepository userRepository, ITokenService tokenService, IHttpContextAccessor httpContextAccessor)
     {
         _userRepository = userRepository;
         _tokenService = tokenService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<TokenDTO> LoginAsync(string email, string password)
@@ -27,25 +31,40 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Invalid email or password.");
         
         var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Role.ToString());
-        var refreshToken = _tokenService.GenerateRefreshToken();
         
-        var token = new Token
+        Console.WriteLine("access token generated");
+        // var refreshToken = _tokenService.GenerateRefreshToken();
+        
+        // derive the user encryption key
+        
+        // TODO so we have to set the token in session
+        // var token = new Token
+        // {
+        //     AccessToken = accessToken,
+        //     RefreshToken = refreshToken,
+        //     TokenExpiration = DateTime.UtcNow.AddHours(1), // Move this value to configuration
+        //     CreatedAt = DateTime.UtcNow,
+        //     DeviceInfo = "Unknown Device" // Use input parameter instead of hardcoding
+        // };
+        //
+        // user.Token = token;
+        // await _userRepository.UpdateAsync(user);
+        // await _userRepository.SaveChangesAsync();
+        
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext != null)
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            TokenExpiration = DateTime.UtcNow.AddHours(1), // Move this value to configuration
-            CreatedAt = DateTime.UtcNow,
-            DeviceInfo = "Unknown Device" // Use input parameter instead of hardcoding
-        };
+            // Convert password to byte array using UTF8 encoding
+            byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
 
-        user.Token = token;
-        await _userRepository.UpdateAsync(user);
-        await _userRepository.SaveChangesAsync();
-
+            httpContext.Session.Set("password", passwordBytes); // Store byte array in session
+        }
+        
+        Console.WriteLine("value set in session");
+        
         return new TokenDTO
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken,
             TokenExpiration = DateTime.UtcNow.AddHours(1) // Move this to configuration if necessary
         };
     }
@@ -55,7 +74,6 @@ public class AuthService : IAuthService
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null) return;
 
-        user.Token = null;
         await _userRepository.UpdateAsync(user);
         await _userRepository.SaveChangesAsync();
     }

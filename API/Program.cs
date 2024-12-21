@@ -28,6 +28,7 @@ builder.Services.AddScoped<IMedicalRecordRepository, MedicalRecordRepository>();
 builder.Services.AddScoped<ITokenRepository, TokenRepository>();
 
 // Register services
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IMedicalRecordService, MedicalRecordService>();
 builder.Services.AddScoped<IAuthService, AuthService>(); 
 builder.Services.AddScoped<ITokenService>(provider =>
@@ -41,12 +42,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
+            ValidateIssuer = false,
+            ValidateAudience = false, // Check implications
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
-            ValidAudience = builder.Configuration["JwtSettings:Audience"],
+            // ValidIssuer = builder.Configuration["JwtSettings:Issuer"], // 
+            // ValidAudience = builder.Configuration["JwtSettings:Audience"], //
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration.GetSection("JwtSecret").Value!))
         };
@@ -64,7 +65,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30); // 30 minute sessions
+    options.IdleTimeout = TimeSpan.FromMinutes(int.Parse(builder.Configuration["JwtSettings:ExpirationMinutes"]!)); // 30 minute sessions
     options.Cookie.HttpOnly = true; // FOr security?
     options.Cookie.IsEssential = true; // GDPR??
     // options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
@@ -76,7 +77,11 @@ builder.Services.AddSingleton(provider =>
     new EncryptionHelper(builder.Configuration.GetSection("MasterEncryptionKey").Value!));
 // Configure database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    {
+        options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
+            , b => b.MigrationsAssembly("API"));
+    }
+);
 
 // Required for Swagger to discover endpoints
 builder.Services.AddControllers(); 

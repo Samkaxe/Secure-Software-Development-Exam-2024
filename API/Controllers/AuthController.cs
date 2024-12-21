@@ -13,12 +13,13 @@ public class AuthController(IAuthService authService) : Controller
     public async Task<IActionResult> Login([FromBody] LoginRequestDTO request)
     {
         try
-        {
+        { 
             var token = await authService.LoginAsync(request.Email, request.Password);
             return Ok(token);
         }
         catch (Exception e)
         {
+            Console.WriteLine("error");
             return Unauthorized(new { Message = e.Message });
         }
     }

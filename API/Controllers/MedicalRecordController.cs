@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Application.DTOs;
 using Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -26,11 +27,23 @@ public class MedicalRecordController(IMedicalRecordService medicalRecordService)
         [HttpGet("my-records")]
         public async Task<IActionResult> GetMyMedicalRecords()
         {
-            var userId = Guid.Parse(User.FindFirst("sub")?.Value);
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("User ID not found in token.");
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
+
             var records = await medicalRecordService.GetAllByUserIdAsync(userId);
 
             if (!records.Any())
+            {
                 return NotFound("No records found for your account.");
+            }
 
             return Ok(records);
         }
@@ -65,7 +78,8 @@ public class MedicalRecordController(IMedicalRecordService medicalRecordService)
         }
 
         // Endpoint: Delete a medical record (Doctor only)
-        [Authorize(Policy = "DoctorPolicy")]
+        // [Authorize(Policy = "DoctorPolicy")]
+        [Authorize]
         [HttpDelete("delete/{id}")]
         public async Task<IActionResult> DeleteMedicalRecord(Guid id)
         {
