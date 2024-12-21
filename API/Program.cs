@@ -29,7 +29,7 @@ builder.Services.AddScoped<ITokenRepository, TokenRepository>();
 
 // Register services
 builder.Services.AddScoped<IMedicalRecordService, MedicalRecordService>();
-builder.Services.AddScoped<IUserService, UserService>(); 
+builder.Services.AddScoped<IAuthService, AuthService>(); 
 builder.Services.AddScoped<ITokenService>(provider =>
     new TokenService(
         jwtSecret: builder.Configuration.GetSection("JwtSecret").Value!, 
@@ -52,12 +52,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("PatientPolicy", policy => policy.RequireRole("Patient"));
     options.AddPolicy("DoctorPolicy", policy => policy.RequireRole("Doctor"));
     options.AddPolicy("NursePolicy", policy => policy.RequireRole("Nurse"));
     options.AddPolicy("EmergencyResponderPolicy", policy => policy.RequireRole("EmergencyResponder"));
+});
+
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30); // 30 minute sessions
+    options.Cookie.HttpOnly = true; // FOr security?
+    options.Cookie.IsEssential = true; // GDPR??
+    // options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
 });
 
 // Register EncryptionHelper with a key from configuration
@@ -88,6 +99,7 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseSession();
 
 app.MapControllers(); // This maps your controller routes
 

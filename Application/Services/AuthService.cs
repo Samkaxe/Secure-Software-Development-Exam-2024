@@ -5,12 +5,12 @@ using Infrastructure.DataAccessInterfaces;
 
 namespace Application.Services;
 
-public class UserService : IUserService
+public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly ITokenService _tokenService;
 
-    public UserService(IUserRepository userRepository, ITokenService tokenService)
+    public AuthService(IUserRepository userRepository, ITokenService tokenService)
     {
         _userRepository = userRepository;
         _tokenService = tokenService;
