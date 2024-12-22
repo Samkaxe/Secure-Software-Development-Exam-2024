@@ -1,19 +1,26 @@
-﻿using Application.DTOs;
+﻿using System.Text;
+using Application.DTOs;
 using Application.Interfaces;
 using Core.Entites;
 using Infrastructure.DataAccessInterfaces;
+using Microsoft.AspNetCore.Http;
 
 namespace Application.Services;
 
-public class UserService : IUserService
+public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly ITokenService _tokenService;
+    private readonly EncryptionHelper _encryptionHelper;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public UserService(IUserRepository userRepository, ITokenService tokenService)
+    public AuthService(IUserRepository userRepository, ITokenService tokenService,
+        IHttpContextAccessor httpContextAccessor, EncryptionHelper encryptionHelper)
     {
         _userRepository = userRepository;
         _tokenService = tokenService;
+        _httpContextAccessor = httpContextAccessor;
+        _encryptionHelper = encryptionHelper;
     }
 
     public async Task<TokenDTO> LoginAsync(string email, string password)
@@ -27,26 +34,21 @@ public class UserService : IUserService
             throw new UnauthorizedAccessException("Invalid email or password.");
         
         var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Role.ToString());
-        var refreshToken = _tokenService.GenerateRefreshToken();
         
-        var token = new Token
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext != null)
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            TokenExpiration = DateTime.UtcNow.AddHours(1), // Move this value to configuration
-            CreatedAt = DateTime.UtcNow,
-            DeviceInfo = "Unknown Device" // Use input parameter instead of hardcoding
-        };
-
-        user.Token = token;
-        await _userRepository.UpdateAsync(user);
-        await _userRepository.SaveChangesAsync();
-
+            var derivedKey = _encryptionHelper.DeriveKey(password, user.PasswordSalt);
+            
+            Console.WriteLine("derived user key" + BitConverter.ToString(derivedKey));
+            
+            httpContext.Session.Set("uek", derivedKey); // store the user encryption key in the user session
+        }
+        
         return new TokenDTO
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            TokenExpiration = DateTime.UtcNow.AddHours(1) // Move this to configuration if necessary
+            TokenExpiration = DateTime.UtcNow.AddHours(1)
         };
     }
 
@@ -55,7 +57,6 @@ public class UserService : IUserService
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null) return;
 
-        user.Token = null;
         await _userRepository.UpdateAsync(user);
         await _userRepository.SaveChangesAsync();
     }
@@ -65,6 +66,10 @@ public class UserService : IUserService
         var salt = PasswordHelper.GenerateSalt();
         var hashedPassword = PasswordHelper.HashPassword(userDto.Password, salt);
 
+        var encryptedUeK = _encryptionHelper.EncryptWithMasterKey(
+            _encryptionHelper.DeriveKey(userDto.Password, salt)
+        );
+
         var user = new User
         {
             FirstName = userDto.FirstName,
@@ -72,7 +77,8 @@ public class UserService : IUserService
             Email = userDto.Email,
             PasswordHash = hashedPassword,
             PasswordSalt = salt,
-            Role = userDto.Role
+            Role = userDto.Role,
+            EncryptedUek = encryptedUeK
         };
 
         await _userRepository.AddAsync(user);

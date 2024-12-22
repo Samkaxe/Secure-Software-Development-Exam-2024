@@ -17,7 +17,6 @@ public class UserRepository : IUserRepository
     public async Task<User> GetByIdAsync(Guid id)
     {
         return await _context.Users
-            .Include(u => u.Token)
             .Include(u => u.MedicalRecords)
             .FirstOrDefaultAsync(u => u.Id == id);
     }
@@ -30,7 +29,6 @@ public class UserRepository : IUserRepository
         }
 
         return await _context.Users
-            .Include(u => u.Token)
             .Include(u => u.MedicalRecords)
             .FirstOrDefaultAsync(u => u.Email == email);
     }
@@ -62,7 +60,6 @@ public class UserRepository : IUserRepository
     public async Task<IEnumerable<User>> GetAllAsync()
     {
         return await _context.Users
-            .Include(u => u.Token)
             .Include(u => u.MedicalRecords)
             .ToListAsync();
     }

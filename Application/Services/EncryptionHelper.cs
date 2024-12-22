@@ -1,5 +1,6 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 
 namespace Application.Services;
 
@@ -7,54 +8,88 @@ public class EncryptionHelper
 {
     private readonly byte[] _key;
 
-    public EncryptionHelper(string key)
+    public EncryptionHelper(string secretKey)
     {
-       
-        _key = Encoding.UTF8.GetBytes(key.PadRight(32).Substring(0, 32));
+        if (string.IsNullOrEmpty(secretKey))
+        {
+            throw new ArgumentNullException(nameof(secretKey), "Secret key cannot be null or empty.");
+        }
+
+        if (secretKey.Length < 32)
+        {
+            throw new ArgumentException("Secret key must be at least 32 characters (256 bits) long for AES-256.", nameof(secretKey));
+        }
+
+        _key = Encoding.UTF8.GetBytes(secretKey.PadRight(32).Substring(0, 32));
     }
 
-    public string Encrypt(string plainText)
+    public byte[] EncryptWithMasterKey(byte[] data)
+    {
+        return EncryptWithSpecificKey(data, _key);
+    }
+
+    public byte[] EncryptWithSpecificKey(byte[] data, byte[] key)
     {
         using (var aesAlg = Aes.Create())
         {
-            aesAlg.Key = _key;
+            aesAlg.Key = key;
             aesAlg.GenerateIV();
-            var encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
 
             using (var msEncrypt = new MemoryStream())
             {
-               
                 msEncrypt.Write(aesAlg.IV, 0, aesAlg.IV.Length);
-                using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
-                using (var swEncrypt = new StreamWriter(csEncrypt))
+                using (var csEncrypt = new CryptoStream(msEncrypt, aesAlg.CreateEncryptor(), CryptoStreamMode.Write))
                 {
-                    swEncrypt.Write(plainText);
+                    csEncrypt.Write(data, 0, data.Length);
                 }
-                return Convert.ToBase64String(msEncrypt.ToArray());
+                return msEncrypt.ToArray();
+            }
+        }
+    }
+    
+    public byte[] DecryptWithSpecificKey(byte[] cipherText, byte[] key)
+    {
+        Console.WriteLine("master key value");
+        Console.WriteLine(BitConverter.ToString(key));
+        Console.WriteLine("ciphertext");
+        Console.WriteLine(BitConverter.ToString(cipherText));
+        
+        Console.WriteLine("Master key length: " + key.Length + " bytes"); //
+        using (var aesAlg = Aes.Create())
+        {
+            Console.WriteLine("Key Length (bytes): " + key.Length);
+            aesAlg.Key = key;
+
+            byte[] iv = new byte[aesAlg.BlockSize / 8];
+            Array.Copy(cipherText, iv, iv.Length);
+            aesAlg.IV = iv;
+
+            using (var msDecrypt = new MemoryStream(cipherText, iv.Length, cipherText.Length - iv.Length))
+            using (var csDecrypt = new CryptoStream(msDecrypt, aesAlg.CreateDecryptor(), CryptoStreamMode.Read))
+            {
+                using (var msOutput = new MemoryStream())
+                {
+                    csDecrypt.CopyTo(msOutput);
+                    return msOutput.ToArray();
+                }
             }
         }
     }
 
-    public string Decrypt(string cipherText)
+    public byte[] DecryptWithMasterKey(byte[] cipherText)
     {
-        var fullCipher = Convert.FromBase64String(cipherText);
+        return this.DecryptWithSpecificKey(cipherText, _key);
+    }
 
-        using (var aesAlg = Aes.Create())
-        {
-            aesAlg.Key = _key;
-            
-            var iv = new byte[aesAlg.BlockSize / 8];
-            Array.Copy(fullCipher, iv, iv.Length);
-            aesAlg.IV = iv;
+    public byte[] DeriveKey(string password, string salt, int keySize = 32)
+    {
+        byte[] saltBytes = Encoding.UTF8.GetBytes(salt);
 
-            var decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
-
-            using (var msDecrypt = new MemoryStream(fullCipher, iv.Length, fullCipher.Length - iv.Length))
-            using (var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
-            using (var srDecrypt = new StreamReader(csDecrypt))
-            {
-                return srDecrypt.ReadToEnd();
-            }
-        }
+        return KeyDerivation.Pbkdf2(
+            password: password!,
+            salt: saltBytes,
+            prf: KeyDerivationPrf.HMACSHA256,
+            iterationCount: 100000,
+            numBytesRequested: keySize);
     }
 }

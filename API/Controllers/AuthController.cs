@@ -7,18 +7,19 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(IUserService userService) : Controller
+public class AuthController(IAuthService authService) : Controller
 {
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequestDTO request)
     {
         try
-        {
-            var token = await userService.LoginAsync(request.Email, request.Password);
+        { 
+            var token = await authService.LoginAsync(request.Email, request.Password);
             return Ok(token);
         }
         catch (Exception e)
         {
+            Console.WriteLine("error");
             return Unauthorized(new { Message = e.Message });
         }
     }
@@ -36,7 +37,7 @@ public class AuthController(IUserService userService) : Controller
         // Attempt registration
         try
         {
-            var user = await userService.CreateUserAsync(registerUserDTO);
+            var user = await authService.CreateUserAsync(registerUserDTO);
             return CreatedAtAction(nameof(Login), new { id = user.Id }, new
             {
                 user.Id,

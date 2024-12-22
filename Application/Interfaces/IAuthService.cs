@@ -3,7 +3,7 @@ using Core.Entites;
 
 namespace Application.Interfaces;
 
-public interface IUserService
+public interface IAuthService
 {
     Task<TokenDTO> LoginAsync(string email, string password);
     Task LogoutAsync(Guid userId);

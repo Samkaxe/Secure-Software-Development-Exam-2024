@@ -14,12 +14,6 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<User>()
-            .HasOne(u => u.Token)
-            .WithOne(t => t.User)
-            .HasForeignKey<Token>(t => t.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         modelBuilder.Entity<MedicalRecord>()
             .HasOne(m => m.User)
             .WithMany(u => u.MedicalRecords)

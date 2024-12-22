@@ -6,8 +6,7 @@ public class MedicalRecord
     public Guid UserId { get; set; } 
     public User User { get; set; } 
 
-    public string RecordData { get; set; } 
-    public string EncryptionKey { get; set; } 
+    public Byte[] RecordData { get; set; } 
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow; 
     public DateTime? UpdatedAt { get; set; } 
