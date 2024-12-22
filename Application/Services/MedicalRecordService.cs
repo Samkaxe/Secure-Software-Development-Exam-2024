@@ -1,4 +1,6 @@
-﻿using Application.DTOs;
+﻿using System.Security.Cryptography;
+using System.Text;
+using Application.DTOs;
 using Application.Interfaces;
 using Core.Entites;
 using Infrastructure.DataAccessInterfaces;
@@ -16,44 +18,77 @@ public class MedicalRecordService : IMedicalRecordService
         _encryptionHelper = encryptionHelper;
     }
 
-    public async Task<MedicalRecordDTO> GetByIdAsync(Guid id)
+    public async Task<MedicalRecordDTO> GetByIdAsync(Guid id, byte[] encryptionKey)
     {
-        var record = await _medicalRecordRepository.GetByIdAsync(id);
-        if (record == null) return null;
-
-        return new MedicalRecordDTO
+        try
         {
-            Id = record.Id,
-            UserId = record.UserId,
-            RecordData = _encryptionHelper.Decrypt(record.RecordData),
-            CreatedAt = record.CreatedAt,
-            UpdatedAt = record.UpdatedAt
-        };
+            var record = await _medicalRecordRepository.GetByIdAsync(id);
+            if (record == null) return null;
+
+            byte[] decryptedDataBytes = _encryptionHelper.DecryptWithSpecificKey(record.RecordData, encryptionKey);
+            string decryptedData = Encoding.UTF8.GetString(decryptedDataBytes);
+
+            return new MedicalRecordDTO
+            {
+                Id = record.Id,
+                UserId = record.UserId,
+                RecordData = decryptedData,
+                CreatedAt = record.CreatedAt,
+                UpdatedAt = record.UpdatedAt
+            };
+        }
+        catch (CryptographicException ex)
+        {
+            Console.WriteLine(ex.Message);
+            return null; // Or throw a custom exception if appropriate
+        }
     }
 
-    public async Task<IEnumerable<MedicalRecordDTO>> GetAllByUserIdAsync(Guid userId)
+    public async Task<IEnumerable<MedicalRecordDTO>> GetAllByUserIdAsync(Guid userId, byte[] encryptionKey)
     {
-        var records = await _medicalRecordRepository.GetAllByUserIdAsync(userId);
-
-        return records.Select(record => new MedicalRecordDTO
+        try
         {
-            Id = record.Id,
-            UserId = record.UserId,
-            RecordData = _encryptionHelper.Decrypt(record.RecordData),
-            CreatedAt = record.CreatedAt,
-            UpdatedAt = record.UpdatedAt
-        });
+            var records = await _medicalRecordRepository.GetAllByUserIdAsync(userId);
+
+            return records.Select(record =>
+            {
+                try
+                {
+                    byte[] decryptedDataBytes = _encryptionHelper.DecryptWithSpecificKey(record.RecordData, encryptionKey);
+                    string decryptedData = Encoding.UTF8.GetString(decryptedDataBytes);
+                    return new MedicalRecordDTO
+                    {
+                        Id = record.Id,
+                        UserId = record.UserId,
+                        RecordData = decryptedData,
+                        CreatedAt = record.CreatedAt,
+                        UpdatedAt = record.UpdatedAt
+                    };
+                }
+                catch (CryptographicException ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    return null; // Or handle the error as needed
+                }
+            }).Where(dto => dto != null); // Filter out null DTOs
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return null; // Or handle the error as needed
+        }
     }
 
-    public async Task<MedicalRecordDTO> AddAsync(CreateMedicalRecordDTO medicalRecordDto)
+    public async Task<MedicalRecordDTO> AddAsync(CreateMedicalRecordDTO medicalRecordDto, byte[] encryptionKey)
     {
-        var encryptedData = _encryptionHelper.Encrypt(medicalRecordDto.RecordData);
+        var encryptedData = _encryptionHelper.EncryptWithSpecificKey(
+            Encoding.UTF8.GetBytes(medicalRecordDto.RecordData), encryptionKey    
+        );
 
         var newRecord = new MedicalRecord
         {
             UserId = medicalRecordDto.UserId,
             RecordData = encryptedData,
-            EncryptionKey = medicalRecordDto.EncryptionKey,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -64,32 +99,45 @@ public class MedicalRecordService : IMedicalRecordService
         {
             Id = savedRecord.Id,
             UserId = savedRecord.UserId,
-            RecordData = _encryptionHelper.Decrypt(savedRecord.RecordData), // Decrypt for return
+            RecordData = medicalRecordDto.RecordData,
             CreatedAt = savedRecord.CreatedAt,
             UpdatedAt = savedRecord.UpdatedAt
         };
     }
 
-    public async Task<MedicalRecordDTO> UpdateAsync(Guid id, UpdateMedicalRecordDTO medicalRecordDto)
+    public async Task<MedicalRecordDTO> UpdateAsync(Guid id, UpdateMedicalRecordDTO medicalRecordDto, byte[] encryptionKey)
     {
-        var record = await _medicalRecordRepository.GetByIdAsync(id);
-        if (record == null) throw new KeyNotFoundException("Medical record not found.");
-
-        record.RecordData = _encryptionHelper.Encrypt(medicalRecordDto.RecordData);
-        record.EncryptionKey = medicalRecordDto.EncryptionKey;
-        record.UpdatedAt = DateTime.UtcNow;
-
-        var savedRecord = await _medicalRecordRepository.UpdateAsync(record);
-        await _medicalRecordRepository.SaveChangesAsync();
-        
-        return new MedicalRecordDTO
+        try
         {
-            Id = savedRecord.Id,
-            UserId = savedRecord.UserId,
-            RecordData = _encryptionHelper.Decrypt(savedRecord.RecordData), // Decrypt for return
-            CreatedAt = savedRecord.CreatedAt,
-            UpdatedAt = savedRecord.UpdatedAt
-        };
+            var record = await _medicalRecordRepository.GetByIdAsync(id);
+            if (record == null) throw new KeyNotFoundException("Medical record not found.");
+
+            record.RecordData = _encryptionHelper.EncryptWithSpecificKey(
+                Encoding.UTF8.GetBytes(medicalRecordDto.RecordData),
+                encryptionKey
+            );
+            record.UpdatedAt = DateTime.UtcNow;
+
+            var savedRecord = await _medicalRecordRepository.UpdateAsync(record);
+            await _medicalRecordRepository.SaveChangesAsync();
+
+            byte[] decryptedDataBytes = _encryptionHelper.DecryptWithSpecificKey(savedRecord.RecordData, encryptionKey);
+            string decryptedRecordData = Encoding.UTF8.GetString(decryptedDataBytes);
+
+            return new MedicalRecordDTO
+            {
+                Id = savedRecord.Id,
+                UserId = savedRecord.UserId,
+                RecordData = decryptedRecordData,
+                CreatedAt = savedRecord.CreatedAt,
+                UpdatedAt = savedRecord.UpdatedAt
+            };
+        }
+        catch (CryptographicException ex)
+        {
+            Console.WriteLine(ex.Message);
+            return null;
+        }
     }
 
     public async Task DeleteAsync(Guid id)

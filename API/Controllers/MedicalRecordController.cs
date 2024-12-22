@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 using Application.DTOs;
 using Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -8,14 +9,15 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/medicalRecord")]
-public class MedicalRecordController(IMedicalRecordService medicalRecordService) : Controller
+public class MedicalRecordController(IMedicalRecordService medicalRecordService, IUserEncyrptionKeyService userEncyrptionKeyService) : Controller
 {
         // Endpoint: Get all medical records for a specific patient
         [Authorize(Policy = "DoctorPolicy")]
         [HttpGet("patient/{patientId}")]
         public async Task<IActionResult> GetMedicalRecords(Guid patientId)
         {
-            var records = await medicalRecordService.GetAllByUserIdAsync(patientId);
+            Byte[] uek = await userEncyrptionKeyService.GetUserEncryptionKeyAsync(patientId);
+            var records = await medicalRecordService.GetAllByUserIdAsync(patientId, uek);
             if (!records.Any())
                 return NotFound("No records found for this patient.");
 
@@ -28,9 +30,18 @@ public class MedicalRecordController(IMedicalRecordService medicalRecordService)
         public async Task<IActionResult> GetMyMedicalRecords()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Console.WriteLine("user id");
             if (string.IsNullOrEmpty(userIdClaim))
             {
                 return Unauthorized("User ID not found in token.");
+            }
+
+            var userEncryptionKey = HttpContext.Session.Get("uek");
+            Console.WriteLine("user encryption key");
+            Console.WriteLine(BitConverter.ToString(userEncryptionKey));
+            if (userEncryptionKey == null)
+            {
+                return Unauthorized("User session is invalid");
             }
 
             if (!Guid.TryParse(userIdClaim, out Guid userId))
@@ -38,12 +49,13 @@ public class MedicalRecordController(IMedicalRecordService medicalRecordService)
                 return BadRequest("Invalid user ID format in token.");
             }
 
-            var records = await medicalRecordService.GetAllByUserIdAsync(userId);
+            var records = await medicalRecordService.GetAllByUserIdAsync(userId, userEncryptionKey);
 
             if (!records.Any())
             {
                 return NotFound("No records found for your account.");
             }
+
 
             return Ok(records);
         }
@@ -56,7 +68,8 @@ public class MedicalRecordController(IMedicalRecordService medicalRecordService)
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var createdRecord = await medicalRecordService.AddAsync(record);
+            Byte[] uek = await userEncyrptionKeyService.GetUserEncryptionKeyAsync(record.UserId);
+            var createdRecord = await medicalRecordService.AddAsync(record, uek);
 
             return CreatedAtAction(nameof(GetMedicalRecords), new { patientId = record.UserId }, createdRecord);
         }
@@ -69,7 +82,8 @@ public class MedicalRecordController(IMedicalRecordService medicalRecordService)
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await medicalRecordService.UpdateAsync(id, updatedRecord);
+            Byte[] uek = await userEncyrptionKeyService.GetUserEncryptionKeyAsync(id);
+            var result = await medicalRecordService.UpdateAsync(id, updatedRecord, uek);
 
             /*if (!result)
                 return NotFound("Medical record not found.");*/
@@ -92,7 +106,8 @@ public class MedicalRecordController(IMedicalRecordService medicalRecordService)
         [HttpGet("emergency-access/{patientId}")]
         public async Task<IActionResult> EmergencyAccess(Guid patientId)
         {
-            var records = await medicalRecordService.GetAllByUserIdAsync(patientId);
+            Byte[] uek = await userEncyrptionKeyService.GetUserEncryptionKeyAsync(patientId);
+            var records = await medicalRecordService.GetAllByUserIdAsync(patientId, uek);
 
             if (!records.Any())
                 return NotFound("No records found for this patient.");

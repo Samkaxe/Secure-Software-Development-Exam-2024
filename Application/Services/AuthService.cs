@@ -11,13 +11,16 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly ITokenService _tokenService;
+    private readonly EncryptionHelper _encryptionHelper;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public AuthService(IUserRepository userRepository, ITokenService tokenService, IHttpContextAccessor httpContextAccessor)
+    public AuthService(IUserRepository userRepository, ITokenService tokenService,
+        IHttpContextAccessor httpContextAccessor, EncryptionHelper encryptionHelper)
     {
         _userRepository = userRepository;
         _tokenService = tokenService;
         _httpContextAccessor = httpContextAccessor;
+        _encryptionHelper = encryptionHelper;
     }
 
     public async Task<TokenDTO> LoginAsync(string email, string password)
@@ -32,40 +35,20 @@ public class AuthService : IAuthService
         
         var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Role.ToString());
         
-        Console.WriteLine("access token generated");
-        // var refreshToken = _tokenService.GenerateRefreshToken();
-        
-        // derive the user encryption key
-        
-        // TODO so we have to set the token in session
-        // var token = new Token
-        // {
-        //     AccessToken = accessToken,
-        //     RefreshToken = refreshToken,
-        //     TokenExpiration = DateTime.UtcNow.AddHours(1), // Move this value to configuration
-        //     CreatedAt = DateTime.UtcNow,
-        //     DeviceInfo = "Unknown Device" // Use input parameter instead of hardcoding
-        // };
-        //
-        // user.Token = token;
-        // await _userRepository.UpdateAsync(user);
-        // await _userRepository.SaveChangesAsync();
-        
         var httpContext = _httpContextAccessor.HttpContext;
         if (httpContext != null)
         {
-            // Convert password to byte array using UTF8 encoding
-            byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
-
-            httpContext.Session.Set("password", passwordBytes); // Store byte array in session
+            var derivedKey = _encryptionHelper.DeriveKey(password, user.PasswordSalt);
+            
+            Console.WriteLine("derived user key" + BitConverter.ToString(derivedKey));
+            
+            httpContext.Session.Set("uek", derivedKey); // store the user encryption key in the user session
         }
-        
-        Console.WriteLine("value set in session");
         
         return new TokenDTO
         {
             AccessToken = accessToken,
-            TokenExpiration = DateTime.UtcNow.AddHours(1) // Move this to configuration if necessary
+            TokenExpiration = DateTime.UtcNow.AddHours(1)
         };
     }
 
@@ -83,6 +66,10 @@ public class AuthService : IAuthService
         var salt = PasswordHelper.GenerateSalt();
         var hashedPassword = PasswordHelper.HashPassword(userDto.Password, salt);
 
+        var encryptedUeK = _encryptionHelper.EncryptWithMasterKey(
+            _encryptionHelper.DeriveKey(userDto.Password, salt)
+        );
+
         var user = new User
         {
             FirstName = userDto.FirstName,
@@ -90,7 +77,8 @@ public class AuthService : IAuthService
             Email = userDto.Email,
             PasswordHash = hashedPassword,
             PasswordSalt = salt,
-            Role = userDto.Role
+            Role = userDto.Role,
+            EncryptedUek = encryptedUeK
         };
 
         await _userRepository.AddAsync(user);

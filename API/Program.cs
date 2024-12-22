@@ -30,7 +30,8 @@ builder.Services.AddScoped<ITokenRepository, TokenRepository>();
 // Register services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IMedicalRecordService, MedicalRecordService>();
-builder.Services.AddScoped<IAuthService, AuthService>(); 
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserEncyrptionKeyService, UserEncryptionKeyService>();
 builder.Services.AddScoped<ITokenService>(provider =>
     new TokenService(
         jwtSecret: builder.Configuration.GetSection("JwtSecret").Value!, 

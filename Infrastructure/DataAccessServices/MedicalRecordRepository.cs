@@ -1,4 +1,5 @@
-﻿using Core.Entites;
+﻿using System.Text;
+using Core.Entites;
 using Infrastructure.DataAccessInterfaces;
 using Infrastructure.helpers;
 using Microsoft.EntityFrameworkCore;
@@ -55,14 +56,9 @@ public class MedicalRecordRepository : IMedicalRecordRepository
 
     private void ValidateMedicalRecord(MedicalRecord medicalRecord)
     {
-        if (!ValidatorHelper.IsSqlInjectionSafe(medicalRecord.RecordData))
+        if (!ValidatorHelper.IsSqlInjectionSafe(Encoding.UTF8.GetString(medicalRecord.RecordData)))
         {
             throw new ArgumentException("Invalid record data detected. Potential SQL injection.");
-        }
-
-        if (!ValidatorHelper.IsSqlInjectionSafe(medicalRecord.EncryptionKey))
-        {
-            throw new ArgumentException("Invalid encryption key detected. Potential SQL injection.");
         }
     }
 }
