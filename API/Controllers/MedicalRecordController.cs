@@ -90,14 +90,36 @@ public class MedicalRecordController(IMedicalRecordService medicalRecordService,
 
             return NoContent();
         }
-
-        // Endpoint: Delete a medical record (Doctor only)
-        // [Authorize(Policy = "DoctorPolicy")]
-        [Authorize]
+        
+        
+        [Authorize(Policy = "PatientPolicy")] // Only the patient can delete their own record
         [HttpDelete("delete/{id}")]
-        public async Task<IActionResult> DeleteMedicalRecord(Guid id)
+        public async Task<IActionResult> DeleteMedicalRecordvia(Guid id)
         {
-            await medicalRecordService.DeleteAsync(id);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
+            {
+                return Unauthorized("Invalid or missing user ID in token.");
+            }
+            
+            var encryptionKey = HttpContext.Session.Get("uek");
+            if (encryptionKey == null)
+            {
+                return Unauthorized("User session is invalid or encryption key missing.");
+            }
+            
+            var record = await medicalRecordService.GetByIdAsync(id, encryptionKey);
+            if (record == null)
+            {
+                return NotFound("Medical record not found.");
+            }
+            
+            if (record.UserId != userId)
+            {
+                return Forbid("You are not authorized to delete this record.");
+            }
+            
+            await medicalRecordService.DeleteAsync(id, encryptionKey);
             return NoContent();
         }
 

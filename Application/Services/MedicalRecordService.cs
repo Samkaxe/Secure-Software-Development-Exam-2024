@@ -140,11 +140,25 @@ public class MedicalRecordService : IMedicalRecordService
         }
     }
 
-    public async Task DeleteAsync(Guid id)
+   
+    public async Task DeleteAsync(Guid id, byte[] encryptionKey)
     {
         var record = await _medicalRecordRepository.GetByIdAsync(id);
-        if (record == null) throw new KeyNotFoundException("i love single moms :) .");
+        if (record == null)
+        {
+            throw new KeyNotFoundException("Medical record not found.");
+        }
 
+        
+        try
+        {
+            _encryptionHelper.DecryptWithSpecificKey(record.RecordData, encryptionKey);
+        }
+        catch (CryptographicException)
+        {
+            throw new UnauthorizedAccessException("Invalid encryption key for the record.");
+        }
+        
         await _medicalRecordRepository.DeleteAsync(record);
         await _medicalRecordRepository.SaveChangesAsync();
     }
