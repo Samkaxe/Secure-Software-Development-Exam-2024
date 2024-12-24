@@ -8,11 +8,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace API.Migrations
+namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241221220252_removetoken")]
-    partial class removetoken
+    [Migration("20241224221424_migrations")]
+    partial class migrations
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -29,13 +29,9 @@ namespace API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("EncryptionKey")
+                    b.Property<byte[]>("RecordData")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RecordData")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("BLOB");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");
@@ -50,40 +46,6 @@ namespace API.Migrations
                     b.ToTable("MedicalRecords");
                 });
 
-            modelBuilder.Entity("Core.Entites.Token", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AccessToken")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeviceInfo")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RefreshToken")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("TokenExpiration")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Tokens");
-                });
-
             modelBuilder.Entity("Core.Entites.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -93,6 +55,10 @@ namespace API.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("EncryptedUek")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -110,6 +76,13 @@ namespace API.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ResetToken")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ResetTokenExpiration")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Role")
                         .HasColumnType("INTEGER");
 
@@ -125,17 +98,6 @@ namespace API.Migrations
                 {
                     b.HasOne("Core.Entites.User", "User")
                         .WithMany("MedicalRecords")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Core.Entites.Token", b =>
-                {
-                    b.HasOne("Core.Entites.User", "User")
-                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

@@ -26,8 +26,13 @@ builder.Configuration.AddAzureKeyVault(keyVaultUri, azureCredentials);
 // Register repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IMedicalRecordRepository, MedicalRecordRepository>();
-builder.Services.AddScoped<ITokenRepository, TokenRepository>();
+builder.Services.AddScoped<PasswordResetService>();
 
+builder.Services.AddScoped<IEmailService>(sp => 
+    new EmailService(
+        builder.Configuration["EmailSettings:Username"], 
+        builder.Configuration["EmailSettings:Password"]
+    ));
 // Register services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IMedicalRecordService, MedicalRecordService>();
@@ -81,7 +86,7 @@ builder.Services.AddSingleton(provider =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     {
         options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
-            , b => b.MigrationsAssembly("API"));
+            , b => b.MigrationsAssembly("Infrastructure"));
     }
 );
 

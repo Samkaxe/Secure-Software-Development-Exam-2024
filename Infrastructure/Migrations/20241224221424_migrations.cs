@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class migrations : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -21,7 +21,10 @@ namespace Infrastructure.Migrations
                     Email = table.Column<string>(type: "TEXT", nullable: false),
                     PasswordHash = table.Column<string>(type: "TEXT", nullable: false),
                     PasswordSalt = table.Column<string>(type: "TEXT", nullable: false),
-                    Role = table.Column<int>(type: "INTEGER", nullable: false)
+                    Role = table.Column<int>(type: "INTEGER", nullable: false),
+                    EncryptedUek = table.Column<byte[]>(type: "BLOB", nullable: false),
+                    ResetToken = table.Column<string>(type: "TEXT", nullable: false),
+                    ResetTokenExpiration = table.Column<DateTime>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -34,8 +37,7 @@ namespace Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     UserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    RecordData = table.Column<string>(type: "TEXT", nullable: false),
-                    EncryptionKey = table.Column<string>(type: "TEXT", nullable: false),
+                    RecordData = table.Column<byte[]>(type: "BLOB", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
                 },
@@ -50,39 +52,10 @@ namespace Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "Tokens",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    UserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    AccessToken = table.Column<string>(type: "TEXT", nullable: false),
-                    RefreshToken = table.Column<string>(type: "TEXT", nullable: false),
-                    TokenExpiration = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    DeviceInfo = table.Column<string>(type: "TEXT", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Tokens", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Tokens_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
             migrationBuilder.CreateIndex(
                 name: "IX_MedicalRecords_UserId",
                 table: "MedicalRecords",
                 column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Tokens_UserId",
-                table: "Tokens",
-                column: "UserId",
-                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
@@ -96,9 +69,6 @@ namespace Infrastructure.Migrations
         {
             migrationBuilder.DropTable(
                 name: "MedicalRecords");
-
-            migrationBuilder.DropTable(
-                name: "Tokens");
 
             migrationBuilder.DropTable(
                 name: "Users");

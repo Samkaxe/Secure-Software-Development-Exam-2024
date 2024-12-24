@@ -26,13 +26,9 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("EncryptionKey")
+                    b.Property<byte[]>("RecordData")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RecordData")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("BLOB");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");
@@ -47,41 +43,6 @@ namespace Infrastructure.Migrations
                     b.ToTable("MedicalRecords");
                 });
 
-            modelBuilder.Entity("Core.Entites.Token", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AccessToken")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeviceInfo")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RefreshToken")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("TokenExpiration")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("Tokens");
-                });
-
             modelBuilder.Entity("Core.Entites.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -91,6 +52,10 @@ namespace Infrastructure.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("EncryptedUek")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -106,6 +71,13 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("PasswordSalt")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ResetToken")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ResetTokenExpiration")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Role")
@@ -130,23 +102,9 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Core.Entites.Token", b =>
-                {
-                    b.HasOne("Core.Entites.User", "User")
-                        .WithOne("Token")
-                        .HasForeignKey("Core.Entites.Token", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Core.Entites.User", b =>
                 {
                     b.Navigation("MedicalRecords");
-
-                    b.Navigation("Token")
-                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

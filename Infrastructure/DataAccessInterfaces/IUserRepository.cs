@@ -11,6 +11,6 @@ public interface IUserRepository
     Task UpdateAsync(User user);
     Task DeleteAsync(User user);
     Task SaveChangesAsync();
-    
+    Task<User> GetByResetTokenAsync(string resetToken);
     Task<IEnumerable<User>> GetAllAsync();
 }

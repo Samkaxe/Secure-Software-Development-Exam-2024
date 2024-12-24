@@ -21,6 +21,9 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.Id == id);
     }
 
+
+
+
     public async Task<User> GetByEmailAsync(string email)
     {
         if (!ValidatorHelper.IsSqlInjectionSafe(email))
@@ -55,6 +58,17 @@ public class UserRepository : IUserRepository
     public async Task SaveChangesAsync()
     {
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<User> GetByResetTokenAsync(string resetToken)
+    {
+        if (!ValidatorHelper.IsSqlInjectionSafe(resetToken))
+        {
+            throw new ArgumentException("Invalid input detected. Potential SQL injection.");
+        }
+
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.ResetToken == resetToken && u.ResetTokenExpiration > DateTime.UtcNow);
     }
 
     public async Task<IEnumerable<User>> GetAllAsync()
