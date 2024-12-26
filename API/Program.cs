@@ -69,15 +69,15 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("EmergencyResponderPolicy", policy => policy.RequireRole("EmergencyResponder"));
 });
 
-// builder.Services.AddDistributedMemoryCache();
-// builder.Services.AddSession(options =>
-// {
-//     options.IdleTimeout = TimeSpan.FromMinutes(int.Parse(builder.Configuration["JwtSettings:ExpirationMinutes"]!)); // 30 minute sessions
-//     options.Cookie.HttpOnly = true; // FOr security?
-//     options.Cookie.IsEssential = true; // GDPR??
-//     // options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-//     options.Cookie.SameSite = SameSiteMode.Strict;
-// });
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(int.Parse(builder.Configuration["JwtSettings:ExpirationMinutes"]!)); // 30 minute sessions
+    options.Cookie.HttpOnly = true; // FOr security?
+    options.Cookie.IsEssential = true; // GDPR??
+    // options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+});
 
 // Register EncryptionHelper with a key from configuration
 builder.Services.AddSingleton(provider => 
@@ -122,7 +122,7 @@ app.UseCors("AllowSwagger");
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
-//app.UseSession();
+app.UseSession();
 
 app.MapControllers(); // This maps your controller routes
 

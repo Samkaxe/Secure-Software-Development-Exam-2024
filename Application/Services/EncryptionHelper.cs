@@ -30,50 +30,41 @@ public class EncryptionHelper
 
     public byte[] EncryptWithSpecificKey(byte[] data, byte[] key)
     {
-        using (var aesAlg = Aes.Create())
-        {
-            aesAlg.Key = key;
-            aesAlg.GenerateIV();
+        var aesGcm = new AesGcm(key, AesGcm.TagByteSizes.MaxSize);
 
-            using (var msEncrypt = new MemoryStream())
-            {
-                msEncrypt.Write(aesAlg.IV, 0, aesAlg.IV.Length);
-                using (var csEncrypt = new CryptoStream(msEncrypt, aesAlg.CreateEncryptor(), CryptoStreamMode.Write))
-                {
-                    csEncrypt.Write(data, 0, data.Length);
-                }
-                return msEncrypt.ToArray();
-            }
-        }
+        byte[] nonce = new byte[AesGcm.NonceByteSizes.MaxSize];
+        RandomNumberGenerator.Fill(nonce);
+
+        byte[] ciphertext = new byte[data.Length];
+        byte[] tag = new byte[AesGcm.TagByteSizes.MaxSize];
+
+        aesGcm.Encrypt(nonce, data, ciphertext, tag);
+
+        byte[] combined = new byte[nonce.Length + ciphertext.Length + tag.Length];
+        Array.Copy(nonce, combined, nonce.Length);
+        Array.Copy(ciphertext, 0, combined, nonce.Length, ciphertext.Length);
+        Array.Copy(tag, 0, combined, nonce.Length + ciphertext.Length, tag.Length);
+
+        return combined;
     }
-    
-    public byte[] DecryptWithSpecificKey(byte[] cipherText, byte[] key)
+
+    public byte[] DecryptWithSpecificKey(byte[] combined, byte[] key)
     {
-        Console.WriteLine("master key value");
-        Console.WriteLine(BitConverter.ToString(key));
-        Console.WriteLine("ciphertext");
-        Console.WriteLine(BitConverter.ToString(cipherText));
-        
-        Console.WriteLine("Master key length: " + key.Length + " bytes"); //
-        using (var aesAlg = Aes.Create())
-        {
-            Console.WriteLine("Key Length (bytes): " + key.Length);
-            aesAlg.Key = key;
+        var aesGcm = new AesGcm(key, AesGcm.TagByteSizes.MaxSize);
 
-            byte[] iv = new byte[aesAlg.BlockSize / 8];
-            Array.Copy(cipherText, iv, iv.Length);
-            aesAlg.IV = iv;
+        byte[] nonce = new byte[AesGcm.NonceByteSizes.MaxSize];
+        byte[] ciphertext = new byte[combined.Length - AesGcm.NonceByteSizes.MaxSize - AesGcm.TagByteSizes.MaxSize];
+        byte[] tag = new byte[AesGcm.TagByteSizes.MaxSize];
 
-            using (var msDecrypt = new MemoryStream(cipherText, iv.Length, cipherText.Length - iv.Length))
-            using (var csDecrypt = new CryptoStream(msDecrypt, aesAlg.CreateDecryptor(), CryptoStreamMode.Read))
-            {
-                using (var msOutput = new MemoryStream())
-                {
-                    csDecrypt.CopyTo(msOutput);
-                    return msOutput.ToArray();
-                }
-            }
-        }
+        Array.Copy(combined, nonce, nonce.Length);
+        Array.Copy(combined, nonce.Length, ciphertext, 0, ciphertext.Length);
+        Array.Copy(combined, nonce.Length + ciphertext.Length, tag, 0, tag.Length);
+
+        byte[] plaintext = new byte[ciphertext.Length];
+
+        aesGcm.Decrypt(nonce, ciphertext, tag, plaintext);
+
+        return plaintext;
     }
 
     public byte[] DecryptWithMasterKey(byte[] cipherText)
@@ -88,7 +79,7 @@ public class EncryptionHelper
         return KeyDerivation.Pbkdf2(
             password: password!,
             salt: saltBytes,
-            prf: KeyDerivationPrf.HMACSHA256,
+            prf: KeyDerivationPrf.HMACSHA512,
             iterationCount: 100000,
             numBytesRequested: keySize);
     }

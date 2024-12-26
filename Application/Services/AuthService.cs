@@ -78,7 +78,8 @@ public class AuthService : IAuthService
             PasswordHash = hashedPassword,
             PasswordSalt = salt,
             Role = userDto.Role,
-            EncryptedUek = encryptedUeK
+            EncryptedUek = encryptedUeK,
+            ResetToken = "123" // temporary 
         };
 
         await _userRepository.AddAsync(user);
