@@ -13,6 +13,7 @@ public class MedicalRecordController(IMedicalRecordService medicalRecordService,
 {
         // Endpoint: Get all medical records for a specific patient
         [Authorize(Policy = "DoctorPolicy")]
+        [Authorize(Policy = "NursePolicy")]
         [HttpGet("patient/{patientId}")]
         public async Task<IActionResult> GetMedicalRecords(Guid patientId)
         {
