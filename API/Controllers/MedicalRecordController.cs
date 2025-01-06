@@ -37,7 +37,6 @@ public class MedicalRecordController(IMedicalRecordService medicalRecordService,
             }
 
             var userEncryptionKey = HttpContext.Session.Get("uek");
-            Console.WriteLine("user encryption key");
             Console.WriteLine(BitConverter.ToString(userEncryptionKey));
             if (userEncryptionKey == null)
             {

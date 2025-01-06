@@ -1,5 +1,6 @@
 ﻿using Application.Interfaces;
 using Infrastructure.DataAccessInterfaces;
+using Microsoft.Extensions.Configuration;
 
 namespace Application.Services;
 
@@ -8,12 +9,14 @@ public class PasswordResetService
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly EncryptionHelper _encryptionHelper;
+    private readonly IConfiguration _configuration;
 
-    public PasswordResetService(IUserRepository userRepository, IEmailService emailService, EncryptionHelper encryptionHelper)
+    public PasswordResetService(IUserRepository userRepository, IEmailService emailService, EncryptionHelper encryptionHelper, IConfiguration configuration)
     {
         _userRepository = userRepository;
         _emailService = emailService;
         _encryptionHelper = encryptionHelper;
+        _configuration = configuration;
     }
 
     public async Task<bool> RequestPasswordResetAsync(string email)
@@ -40,9 +43,10 @@ public class PasswordResetService
         var user = await _userRepository.GetByResetTokenAsync(resetToken);
         if (user == null || user.ResetTokenExpiration < DateTime.UtcNow)
             return false;
-
+        
         var salt = PasswordHelper.GenerateSalt();
-        var hashedPassword = PasswordHelper.HashPassword(newPassword, salt);
+        var pepper = FetchPasswordPepper();
+        var hashedPassword = PasswordHelper.HashPassword(newPassword, salt, pepper);
 
         user.PasswordSalt = salt;
         user.PasswordHash = hashedPassword;
@@ -58,5 +62,10 @@ public class PasswordResetService
         await _userRepository.SaveChangesAsync();
 
         return true;
+    }
+
+    private string FetchPasswordPepper()
+    {
+        return _configuration.GetSection("PasswordPepper").Value!;
     }
 }
