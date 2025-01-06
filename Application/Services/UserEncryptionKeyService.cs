@@ -20,9 +20,6 @@ public class UserEncryptionKeyService: IUserEncyrptionKeyService
     public async Task<byte[]> GetUserEncryptionKeyAsync(Guid userId)
     {
         var user = await _userRepository.GetByIdAsync(userId);
-
-        var encryptedUeK = user.EncryptedUek;
-        
         // Extract the encrypted Uek
         byte[] encryptedUekFromDb = user.EncryptedUek;
 

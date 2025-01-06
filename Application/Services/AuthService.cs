@@ -4,6 +4,7 @@ using Application.Interfaces;
 using Core.Entites;
 using Infrastructure.DataAccessInterfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 
 namespace Application.Services;
 
@@ -13,14 +14,16 @@ public class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly EncryptionHelper _encryptionHelper;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IConfiguration _configuration;
 
     public AuthService(IUserRepository userRepository, ITokenService tokenService,
-        IHttpContextAccessor httpContextAccessor, EncryptionHelper encryptionHelper)
+        IHttpContextAccessor httpContextAccessor, EncryptionHelper encryptionHelper, IConfiguration configuration)
     {
         _userRepository = userRepository;
         _tokenService = tokenService;
         _httpContextAccessor = httpContextAccessor;
         _encryptionHelper = encryptionHelper;
+        _configuration = configuration;
     }
 
     public async Task<TokenDTO> LoginAsync(string email, string password)
@@ -29,7 +32,8 @@ public class AuthService : IAuthService
         if (user == null)
             throw new UnauthorizedAccessException("Invalid email or password.");
 
-        var isPasswordValid = PasswordHelper.VerifyPassword(password, user.PasswordHash, user.PasswordSalt);
+        var passwordPepper = FetchPasswordPepper();
+        var isPasswordValid = PasswordHelper.VerifyPassword(password, user.PasswordHash, user.PasswordSalt, passwordPepper);
         if (!isPasswordValid)
             throw new UnauthorizedAccessException("Invalid email or password.");
         
@@ -39,10 +43,7 @@ public class AuthService : IAuthService
         if (httpContext != null)
         {
             var derivedKey = _encryptionHelper.DeriveKey(password, user.PasswordSalt);
-            
-            Console.WriteLine("derived user key" + BitConverter.ToString(derivedKey));
-            
-            httpContext.Session.Set("uek", derivedKey); // store the user encryption key in the user session
+            httpContext.Session.Set("uek", derivedKey);
         }
         
         return new TokenDTO
@@ -50,6 +51,11 @@ public class AuthService : IAuthService
             AccessToken = accessToken,
             TokenExpiration = DateTime.UtcNow.AddHours(1)
         };
+    }
+
+    private string FetchPasswordPepper()
+    {
+        return _configuration.GetSection("PasswordPepper").Value!;
     }
 
     public async Task LogoutAsync(Guid userId)
@@ -64,7 +70,8 @@ public class AuthService : IAuthService
     public async Task<UserDTO> CreateUserAsync(CreateUserDTO userDto)
     {
         var salt = PasswordHelper.GenerateSalt();
-        var hashedPassword = PasswordHelper.HashPassword(userDto.Password, salt);
+        var pepper = FetchPasswordPepper();
+        var hashedPassword = PasswordHelper.HashPassword(userDto.Password, salt, pepper);
 
         var encryptedUeK = _encryptionHelper.EncryptWithMasterKey(
             _encryptionHelper.DeriveKey(userDto.Password, salt)

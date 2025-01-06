@@ -17,21 +17,21 @@ public static class PasswordHelper
     }
 
     // Hashes the password using HMACSHA512, with the salt as the HMAC key
-    public static string HashPassword(string password, string salt)
+    public static string HashPassword(string password, string salt, string passwordPepper)
     {
         var saltBytes = Convert.FromBase64String(salt);
         using (var hmac = new HMACSHA512(saltBytes)) // Use salt as HMAC key
         {
-            var passwordBytes = Encoding.UTF8.GetBytes(password);
+            var passwordBytes = Encoding.UTF8.GetBytes(password+passwordPepper);
             var hashBytes = hmac.ComputeHash(passwordBytes);
             return Convert.ToBase64String(hashBytes);
         }
     }
 
     // Verifies the entered password against the stored hash and salt
-    public static bool VerifyPassword(string enteredPassword, string storedHash, string storedSalt)
+    public static bool VerifyPassword(string enteredPassword, string storedHash, string storedSalt, string passwordPepper)
     {
-        var enteredHash = HashPassword(enteredPassword, storedSalt);
+        var enteredHash = HashPassword(enteredPassword, storedSalt, passwordPepper);
         return storedHash == enteredHash;
     }
 }
