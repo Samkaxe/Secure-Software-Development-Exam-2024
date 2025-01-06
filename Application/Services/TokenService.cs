@@ -34,7 +34,7 @@ public class TokenService : ITokenService
             Expires = DateTime.UtcNow.AddMinutes(_jwtExpirationMinutes),
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature
+                SecurityAlgorithms.HmacSha512Signature // Changed from 256
             )
         };
 
