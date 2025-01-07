@@ -13,4 +13,5 @@ public interface IUserRepository
     Task SaveChangesAsync();
     Task<User> GetByResetTokenAsync(string resetToken);
     Task<IEnumerable<User>> GetAllAsync();
+    Task<IEnumerable<User>> GetAllByRoleAsync(Role role);
 }

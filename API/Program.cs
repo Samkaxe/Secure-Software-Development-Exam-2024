@@ -37,6 +37,7 @@ builder.Services.AddScoped<IEmailService>(sp =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IMedicalRecordService, MedicalRecordService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserEncyrptionKeyService, UserEncryptionKeyService>();
 builder.Services.AddScoped<ITokenService>(provider =>
     new TokenService(
@@ -102,10 +103,20 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSwagger",
         policy => policy
-            .AllowAnyOrigin() 
+            .AllowAnyOrigin()
             .AllowAnyMethod()
             .AllowAnyHeader());
+    
+    options.AddPolicy("AllowAngularApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:4201") // Replace with your Angular app's URL
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
+
+
 
 
 builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
@@ -118,7 +129,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseCors("AllowSwagger");
+
+app.UseCors("AllowAngularApp"); // Enable Swagger CORS policy
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

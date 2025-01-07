@@ -7,25 +7,17 @@ using Infrastructure.DataAccessInterfaces;
 
 namespace Application.Services;
 
-public class MedicalRecordService : IMedicalRecordService
+public class MedicalRecordService(IMedicalRecordRepository medicalRecordRepository, EncryptionHelper encryptionHelper)
+    : IMedicalRecordService
 {
-    private readonly IMedicalRecordRepository _medicalRecordRepository;
-    private readonly EncryptionHelper _encryptionHelper;
-
-    public MedicalRecordService(IMedicalRecordRepository medicalRecordRepository, EncryptionHelper encryptionHelper)
-    {
-        _medicalRecordRepository = medicalRecordRepository;
-        _encryptionHelper = encryptionHelper;
-    }
-
     public async Task<MedicalRecordDTO> GetByIdAsync(Guid id, byte[] encryptionKey)
     {
         try
         {
-            var record = await _medicalRecordRepository.GetByIdAsync(id);
+            var record = await medicalRecordRepository.GetByIdAsync(id);
             if (record == null) return null;
 
-            byte[] decryptedDataBytes = _encryptionHelper.DecryptWithSpecificKey(record.RecordData, encryptionKey);
+            byte[] decryptedDataBytes = encryptionHelper.DecryptWithSpecificKey(record.RecordData, encryptionKey);
             string decryptedData = Encoding.UTF8.GetString(decryptedDataBytes);
 
             return new MedicalRecordDTO
@@ -48,13 +40,13 @@ public class MedicalRecordService : IMedicalRecordService
     {
         try
         {
-            var records = await _medicalRecordRepository.GetAllByUserIdAsync(userId);
+            var records = await medicalRecordRepository.GetAllByUserIdAsync(userId);
 
             return records.Select(record =>
             {
                 try
                 {
-                    byte[] decryptedDataBytes = _encryptionHelper.DecryptWithSpecificKey(record.RecordData, encryptionKey);
+                    byte[] decryptedDataBytes = encryptionHelper.DecryptWithSpecificKey(record.RecordData, encryptionKey);
                     string decryptedData = Encoding.UTF8.GetString(decryptedDataBytes);
                     return new MedicalRecordDTO
                     {
@@ -81,7 +73,7 @@ public class MedicalRecordService : IMedicalRecordService
 
     public async Task<MedicalRecordDTO> AddAsync(CreateMedicalRecordDTO medicalRecordDto, byte[] encryptionKey)
     {
-        var encryptedData = _encryptionHelper.EncryptWithSpecificKey(
+        var encryptedData = encryptionHelper.EncryptWithSpecificKey(
             Encoding.UTF8.GetBytes(medicalRecordDto.RecordData), encryptionKey    
         );
 
@@ -92,8 +84,8 @@ public class MedicalRecordService : IMedicalRecordService
             CreatedAt = DateTime.UtcNow
         };
 
-        var savedRecord = await _medicalRecordRepository.AddAsync(newRecord);
-        await _medicalRecordRepository.SaveChangesAsync();
+        var savedRecord = await medicalRecordRepository.AddAsync(newRecord);
+        await medicalRecordRepository.SaveChangesAsync();
         
         return new MedicalRecordDTO
         {
@@ -109,19 +101,19 @@ public class MedicalRecordService : IMedicalRecordService
     {
         try
         {
-            var record = await _medicalRecordRepository.GetByIdAsync(id);
+            var record = await medicalRecordRepository.GetByIdAsync(id);
             if (record == null) throw new KeyNotFoundException("Medical record not found.");
 
-            record.RecordData = _encryptionHelper.EncryptWithSpecificKey(
+            record.RecordData = encryptionHelper.EncryptWithSpecificKey(
                 Encoding.UTF8.GetBytes(medicalRecordDto.RecordData),
                 encryptionKey
             );
             record.UpdatedAt = DateTime.UtcNow;
 
-            var savedRecord = await _medicalRecordRepository.UpdateAsync(record);
-            await _medicalRecordRepository.SaveChangesAsync();
+            var savedRecord = await medicalRecordRepository.UpdateAsync(record);
+            await medicalRecordRepository.SaveChangesAsync();
 
-            byte[] decryptedDataBytes = _encryptionHelper.DecryptWithSpecificKey(savedRecord.RecordData, encryptionKey);
+            byte[] decryptedDataBytes = encryptionHelper.DecryptWithSpecificKey(savedRecord.RecordData, encryptionKey);
             string decryptedRecordData = Encoding.UTF8.GetString(decryptedDataBytes);
 
             return new MedicalRecordDTO
@@ -143,7 +135,7 @@ public class MedicalRecordService : IMedicalRecordService
    
     public async Task DeleteAsync(Guid id, byte[] encryptionKey)
     {
-        var record = await _medicalRecordRepository.GetByIdAsync(id);
+        var record = await medicalRecordRepository.GetByIdAsync(id);
         if (record == null)
         {
             throw new KeyNotFoundException("Medical record not found.");
@@ -152,14 +144,14 @@ public class MedicalRecordService : IMedicalRecordService
         
         try
         {
-            _encryptionHelper.DecryptWithSpecificKey(record.RecordData, encryptionKey);
+            encryptionHelper.DecryptWithSpecificKey(record.RecordData, encryptionKey);
         }
         catch (CryptographicException)
         {
             throw new UnauthorizedAccessException("Invalid encryption key for the record.");
         }
         
-        await _medicalRecordRepository.DeleteAsync(record);
-        await _medicalRecordRepository.SaveChangesAsync();
+        await medicalRecordRepository.DeleteAsync(record);
+        await medicalRecordRepository.SaveChangesAsync();
     }
 }

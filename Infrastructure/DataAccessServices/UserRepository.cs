@@ -77,6 +77,14 @@ public class UserRepository : IUserRepository
             .Include(u => u.MedicalRecords)
             .ToListAsync();
     }
+    
+    public async Task<IEnumerable<User>> GetAllByRoleAsync(Role role)
+    {
+        return await _context.Users
+            .Where(u => u.Role == role)
+            //.Include(u => u.MedicalRecords)
+            .ToListAsync();
+    }
 
     private void ValidateUser(User user)
     {
