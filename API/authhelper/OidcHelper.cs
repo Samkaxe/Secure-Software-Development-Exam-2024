@@ -16,13 +16,12 @@ public class OidcHelper
 
     public OidcHelper(IConfiguration configuration)
     {
-        var oidcConfig = configuration.GetSection("OidcConfig");
-        _clientId = oidcConfig["ClientId"];
-        _clientSecret = oidcConfig["ClientSecret"];
-        _redirectUri = oidcConfig["RedirectUri"];
-        _authorizationEndpoint = oidcConfig["AuthorizationEndpoint"];
-        _tokenEndpoint = oidcConfig["TokenEndpoint"];
-        _userinfoEndpoint = oidcConfig["UserInfoEndpoint"];
+        _clientId = configuration["OidcClientId"];
+        _clientSecret = configuration["OidcClientSecret"];
+        _redirectUri = configuration["OidcRedirectUri"];
+        _authorizationEndpoint = configuration["OidcAuthorizationEndpoint"];
+        _tokenEndpoint = configuration["OidcTokenEndpoint"];
+        _userinfoEndpoint = configuration["OidcUserInfoEndpoint"];
     }
 
     public string GenerateAuthorizationRequestUrl(string state, string codeChallenge)

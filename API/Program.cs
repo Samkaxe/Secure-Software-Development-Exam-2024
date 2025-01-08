@@ -21,7 +21,13 @@ var azureCredentials = new ClientSecretCredential(
     builder.Configuration["SecretsVault:AzureClientSecret"]);
 builder.Configuration.AddAzureKeyVault(keyVaultUri, azureCredentials);
 
-
+// Access new Key Vault for OIDC (OidcSecretsVault)
+var oidcKeyVaultUri = new Uri(builder.Configuration["OidcSecretsVault:Url"]);
+var oidcCredentials = new ClientSecretCredential(
+    builder.Configuration["OidcSecretsVault:AzureClientTenantId"],
+    builder.Configuration["OidcSecretsVault:AzureClientId"],
+    builder.Configuration["OidcSecretsVault:AzureClientSecret"]);
+builder.Configuration.AddAzureKeyVault(oidcKeyVaultUri, oidcCredentials);
 
 // Register repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -60,7 +66,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 Encoding.UTF8.GetBytes(builder.Configuration.GetSection("JwtSecret").Value!))
         };
     });
-
+/*
+ * ,
+  "OidcConfig": {
+    "ClientId": "my-app-client",
+    "ClientSecret": "Q24s918Ue6KDX2lnUCDUgRRQ0Xiptbp8",
+    "RedirectUri": "http://localhost:5008/api/auth/callback",
+    "AuthorizationEndpoint": "http://localhost:8080/realms/MyAppRealm/protocol/openid-connect/auth",
+    "TokenEndpoint": "http://localhost:8080/realms/MyAppRealm/protocol/openid-connect/token",
+    "UserInfoEndpoint": "http://localhost:8080/realms/MyAppRealm/protocol/openid-connect/userinfo"
+  }
+ */
 
 builder.Services.AddAuthorization(options =>
 {
